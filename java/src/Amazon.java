@@ -316,7 +316,9 @@ public class Amazon {
                    case 3: 
                      placeOrder(esql, userDetails.get(0)); 
                      break;
-                   case 4: viewRecentOrders(esql); break;
+                   case 4: 
+                     viewRecentOrders(esql, userDetails.get(0)); 
+                     break;
                    case 5: updateProduct(esql); break;
                    case 6: viewRecentUpdates(esql); break;
                    case 7: viewPopularProducts(esql); break;
@@ -563,7 +565,27 @@ public class Amazon {
       }
   }
 
-   public static void viewRecentOrders(Amazon esql) {}
+   public static void viewRecentOrders(Amazon esql, String userID) {
+      try {
+         final String query = String.format("SELECT storeID, productName, unitsOrdered, orderTime FROM Orders WHERE customerID = '%s' ORDER BY orderTime DESC LIMIT 5", userID);
+         List<List<String>> results = esql.executeQueryAndReturnResult(query);
+
+         System.out.println("\nRecent Orders");
+         System.out.println("-------------");
+         for (List<String> record : results) {
+            String storeID = record.get(0);
+            String productName = record.get(1);
+            int unitsOrdered = Integer.parseInt(record.get(2));
+            String date = record.get(3);
+
+            System.out.printf("Store ID: %s%nProduct Name: %s%nUnits Ordered: %d%nDate Ordered: %s%n", storeID, productName, unitsOrdered, date);
+            System.out.println("-------------");
+         }
+      } catch (Exception e) {
+         System.err.println("An error occurred while viewing recent orders: " + e.getMessage());
+      }
+  }
+
    public static void updateProduct(Amazon esql) {}
    public static void viewRecentUpdates(Amazon esql) {}
    public static void viewPopularProducts(Amazon esql) {}
