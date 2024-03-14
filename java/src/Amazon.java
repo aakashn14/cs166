@@ -24,6 +24,7 @@ import java.io.InputStreamReader;
 import java.util.List;
 import java.util.ArrayList;
 import java.lang.Math;
+import java.sql.Timestamp;
 
 /**
  * This class defines a simple embedded SQL utility class that is designed to
@@ -34,6 +35,9 @@ public class Amazon {
 
    // reference to physical database connection.
    private Connection _connection = null;
+
+   // 500 order in the table
+   private int orderNum = 501;
 
    // handling the keyboard inputs through a BufferedReader
    // This variable can be global for convenience.
@@ -227,6 +231,12 @@ public class Amazon {
       }//end try
    }//end cleanup
 
+   public int getNextOrderNum() {
+      int currentOrderNum = this.orderNum;
+      this.orderNum++;
+      return currentOrderNum;
+  }  // for case 3
+
    /**
     * The main execution method
     *
@@ -303,7 +313,9 @@ public class Amazon {
                    case 2: 
                      viewProducts(esql); 
                      break;
-                   case 3: placeOrder(esql); break;
+                   case 3: 
+                     placeOrder(esql, userDetails.get(0)); 
+                     break;
                    case 4: viewRecentOrders(esql); break;
                    case 5: updateProduct(esql); break;
                    case 6: viewRecentUpdates(esql); break;
@@ -478,8 +490,79 @@ public class Amazon {
          System.err.println("An error occurred: " + e.getMessage());
       }
    }
-	
-   public static void placeOrder(Amazon esql) {}
+
+   public static void placeOrder(Amazon esql, String userID) {
+      try {
+         final String userQuery = String.format("SELECT latitude, longitude FROM Users WHERE userID = '%s'", userID.trim());
+         List<List<String>> userResults = esql.executeQueryAndReturnResult(userQuery);
+
+         if (userResults.isEmpty()) {
+            System.out.println("User " + userID + " not found.");
+            return;
+         }
+
+         double userLat = Double.parseDouble(userResults.get(0).get(0));
+         double userLong = Double.parseDouble(userResults.get(0).get(1));
+
+         System.out.print("Enter Store ID: ");
+         int storeID = Integer.parseInt(in.readLine().trim());
+
+         final String storeQuery = String.format("SELECT latitude, longitude FROM Store WHERE storeID = '%s'", storeID);
+         List<List<String>> storeResults = esql.executeQueryAndReturnResult(storeQuery);
+
+         if (storeResults.isEmpty()) {
+            System.out.println("Store " + storeID + " not found.");
+            return;
+         }
+
+         double storeLat = Double.parseDouble(storeResults.get(0).get(0));
+         double storeLong = Double.parseDouble(storeResults.get(0).get(1));
+         double distance = esql.calculateDistance(storeLat, storeLong, userLat, userLong);
+
+         if (distance > 30) {
+         System.out.println("Store " + storeID + " too far from current location.");
+         return;
+         }
+
+         System.out.print("\nEnter product name: ");
+         String productName = in.readLine().trim();
+
+         final String productQuery = String.format("SELECT numberOfUnits FROM Product WHERE storeID = '%s' AND productName = '%s'", storeID, productName);
+         List<List<String>> productResults = esql.executeQueryAndReturnResult(productQuery);
+
+         if (productResults.isEmpty()) {
+         System.out.println("Product " + productName + " not found at Store " + storeID + '.');
+         return;
+         }
+
+         int availableUnits = Integer.parseInt(productResults.get(0).get(0));
+
+         if (availableUnits == 0) {
+         System.out.println("Product " + productName + " out of stock at Store " + storeID + '.');
+         return;
+         }
+
+         System.out.print("\n" + availableUnits + " units available. Enter amount of units to purchase: ");
+         int unitsToPurchase = Integer.parseInt(in.readLine().trim());
+  
+         if (unitsToPurchase > availableUnits) {
+         System.out.println("Not enough units available.");
+         return;
+         }
+
+         Timestamp orderTime = new Timestamp(new java.util.Date().getTime());
+         final String orderQuery = String.format(
+         "INSERT INTO Orders (orderNumber, customerID, storeID, productName, unitsOrdered, orderTime) VALUES ('%s', '%s', '%s', '%s', '%s', '%s')",
+         esql.getNextOrderNum(), userID, storeID, productName, unitsToPurchase, orderTime
+         );
+  
+         esql.executeUpdate(orderQuery);
+         System.out.println("Order placed!");
+      } catch (Exception e) {
+         System.err.println("An error occurred: " + e.getMessage());
+      }
+  }
+
    public static void viewRecentOrders(Amazon esql) {}
    public static void updateProduct(Amazon esql) {}
    public static void viewRecentUpdates(Amazon esql) {}
