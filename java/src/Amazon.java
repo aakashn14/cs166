@@ -319,7 +319,9 @@ public class Amazon {
                    case 4: 
                      viewRecentOrders(esql, userDetails.get(0)); 
                      break;
-                   case 5: updateProduct(esql); break;
+                   case 5: 
+                     updateProduct(esql, userDetails.get(0), userDetails.get(1)); 
+                     break;
                    case 6: viewRecentUpdates(esql); break;
                    case 7: viewPopularProducts(esql); break;
                    case 8: viewPopularCustomers(esql); break;
@@ -586,7 +588,62 @@ public class Amazon {
       }
   }
 
-   public static void updateProduct(Amazon esql) {}
+   public static void updateProduct(Amazon esql, String userID, String type) {
+      type = type.trim();
+      if (!type.equals("manager")) {
+          System.out.println("Invalid permissions.\n");
+          return;
+      }
+  
+      try {
+          final String query = String.format("SELECT storeID FROM Store WHERE managerID = '%s'", userID);
+          List<List<String>> result = esql.executeQueryAndReturnResult(query);
+  
+          if (result.isEmpty()) {
+              System.out.println("You do not manage any stores.");
+              return;
+          }
+  
+          System.out.println("Here are the stores you manage: ");
+          System.out.println("---------");
+          for (List<String> record : result) {
+              System.out.println("Store ID: " + record.get(0));
+          }
+  
+          System.out.println("---------\n");
+          System.out.print("Enter store ID to update products: ");
+          String storeID = in.readLine().trim(); 
+  
+          final String listProductsQuery = String.format("SELECT productName FROM Product WHERE storeID = '%s'", storeID);
+          List<List<String>> products = esql.executeQueryAndReturnResult(listProductsQuery);
+  
+          System.out.printf("Products available at Store %s:%n---------\n", storeID);
+          for (List<String> product : products) {
+              System.out.printf("%s\n---------\n", product.get(0));
+          }
+  
+          System.out.print("Enter desired Product name to update: ");
+          String updateName = in.readLine().trim();
+  
+          System.out.print("Enter updated number of units: ");
+          String updateNum = in.readLine().trim(); 
+  
+          System.out.print("Enter updated price per unit: ");
+          String updatePrice = in.readLine().trim();
+  
+          final String updateQuery = String.format("UPDATE Product SET numberOfUnits = '%s', pricePerUnit = '%s' WHERE storeID = '%s' AND productName = '%s'", updateNum, updatePrice, storeID, updateName);
+          esql.executeUpdate(updateQuery);
+  
+          Timestamp updateTime = new Timestamp(new java.util.Date().getTime());
+          final String productUpdateQuery = String.format("INSERT INTO ProductUpdates (managerID, storeID, productName, updatedOn) VALUES ('%s', '%s', '%s', '%s')", userID, storeID, updateName, updateTime);
+          esql.executeUpdate(productUpdateQuery);
+  
+          System.out.printf("Successfully updated %s in Store %s%n---------\n", updateName, storeID);
+      } catch (Exception e) {
+         System.err.println("Error updating product: " + e.getMessage());
+      }
+  }  
+
    public static void viewRecentUpdates(Amazon esql) {}
    public static void viewPopularProducts(Amazon esql) {}
    public static void viewPopularCustomers(Amazon esql) {}
