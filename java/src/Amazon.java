@@ -300,7 +300,9 @@ public class Amazon {
                    case 1:
                      viewStores(esql, userDetails.get(0)); 
                      break;
-                   case 2: viewProducts(esql); break;
+                   case 2: 
+                     viewProducts(esql); 
+                     break;
                    case 3: placeOrder(esql); break;
                    case 4: viewRecentOrders(esql); break;
                    case 5: updateProduct(esql); break;
