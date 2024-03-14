@@ -246,7 +246,7 @@ public class Amazon {
       Amazon esql = null;
       try{
          // use postgres JDBC driver.
-         Class.forName ("org.postgresql.Driver").newInstance ();
+         Class.forName ("org.postgresql.Driver").newInstance();
          // instantiate the Amazon object and creates a physical
          // connection.
          String dbname = args[0];
@@ -262,14 +262,22 @@ public class Amazon {
             System.out.println("1. Create user");
             System.out.println("2. Log in");
             System.out.println("9. < EXIT");
-            String authorisedUser = null;
+            List<String> userDetails = null;
             switch (readChoice()){
-               case 1: CreateUser(esql); break;
-               case 2: authorisedUser = LogIn(esql); break;
-               case 9: keepon = false; break;
-               default : System.out.println("Unrecognized choice!"); break;
+               case 1: 
+                  CreateUser(esql); 
+                  break;
+               case 2: 
+                  userDetails = LogIn(esql);
+                  break;
+               case 9: 
+                  keepon = false; 
+                  break;
+               default: 
+                  System.out.println("Unrecognized choice!"); 
+                  break;
             }//end switch
-            if (authorisedUser != null) {
+            if (userDetails.size() != 0) {
               boolean usermenu = true;
               while(usermenu) {
                 System.out.println("MAIN MENU");
@@ -289,7 +297,9 @@ public class Amazon {
                 System.out.println(".........................");
                 System.out.println("20. Log out");
                 switch (readChoice()){
-                   case 1: viewStores(esql); break;
+                   case 1:
+                     viewStores(esql, userDetails.get(0)); 
+                     break;
                    case 2: viewProducts(esql); break;
                    case 3: placeOrder(esql); break;
                    case 4: viewRecentOrders(esql); break;
@@ -378,7 +388,7 @@ public class Amazon {
     * Check log in credentials for an existing user
     * @return User login or null is the user does not exist
     **/
-   public static String LogIn(Amazon esql){
+   public static List<String> LogIn(Amazon esql){
       try{
          System.out.print("\tEnter name: ");
          String name = in.readLine();
@@ -386,19 +396,57 @@ public class Amazon {
          String password = in.readLine();
 
          String query = String.format("SELECT * FROM USERS WHERE name = '%s' AND password = '%s'", name, password);
-         int userNum = esql.executeQuery(query);
-	 if (userNum > 0)
-		return name;
+         // int userNum = esql.executeQuery(query);
+         List<List<String>> result = esql.executeQueryAndReturnResult(query);
+
+         List<String> info = new ArrayList<>();
+         info.add(result.get(0).get(0));
+         info.add(result.get(0).get(1));
+
+	      if (info.size() > 0)
+		      return info;
+
          return null;
       }catch(Exception e){
-         System.err.println (e.getMessage ());
+         System.err.println(e.getMessage());
          return null;
       }
    }//end
 
 // Rest of the functions definition go in here
 
-   public static void viewStores(Amazon esql) {}
+   public static void viewStores(Amazon esql, String userID) {
+      try {
+         String query = String.format("SELECT latitude, longitude FROM Users WHERE userID = '%s'", userID);
+         
+         List<List<String>> results = esql.executeQueryAndReturnResult(query);
+
+         double userLat = Double.parseDouble(results.get(0).get(0));
+         double userLong = Double.parseDouble(results.get(0).get(1));
+
+         String query2 = "SELECT storeID, latitude, longitude FROM Store";
+         List<List<String>> results2 = esql.executeQueryAndReturnResult(query2);
+
+         System.out.println("List of stores within 30 miles of you");
+         System.out.println("---------");
+         for (List<String> record : results2) {
+            String storeID = record.get(0);
+            double storeLat = Double.parseDouble(record.get(1));
+            double storeLong = Double.parseDouble(record.get(2));
+            double distance = esql.calculateDistance(storeLat, storeLong, userLat, userLong);
+            if (distance < 30) {
+                  System.out.println("Store ID: " + storeID);
+                  System.out.println("Distance: " + distance + " miles");
+                  System.out.println("---------");
+                  
+            }
+         }
+
+      } catch (Exception e) {
+         System.err.println(e.getMessage());
+      }
+   }
+
    public static void viewProducts(Amazon esql) {}
    public static void placeOrder(Amazon esql) {}
    public static void viewRecentOrders(Amazon esql) {}
@@ -409,4 +457,3 @@ public class Amazon {
    public static void placeProductSupplyRequests(Amazon esql) {}
 
 }//end Amazon
-
